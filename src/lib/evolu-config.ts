@@ -9,7 +9,7 @@ export const evolu = createEvolu(evoluReactWebDeps)(Schema, {
   reloadUrl: "/",
 
   ...(import.meta.env.DEV && {
-    syncUrl: "http://localhost:4000",
+    syncUrl: "wss://evolu-kalita.up.railway.app",
   }),
 
   onInit: ({ isFirst }) => {

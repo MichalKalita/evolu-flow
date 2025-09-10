@@ -1,4 +1,4 @@
-import { FC, useState, useRef } from "react";
+import { FC, useRef } from "react";
 
 interface SettingsIconProps {
   onSettingsClick: (position: { x: number; y: number }) => void;
