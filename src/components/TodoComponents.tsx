@@ -468,7 +468,7 @@ export const TodoItem: FC<{
         className={twMerge(
           "inline-flex gap-1 cursor-pointer transition-colors rounded px-2 py-1 border focus:outline-none",
           status === "in progress"
-            ? "border-white hover:bg-gray-50 dark:hover:bg-gray-800/50"
+            ? "border-gray-600 dark:border-white hover:bg-gray-50 dark:hover:bg-gray-800/50"
             : "border-transparent hover:bg-gray-50 dark:hover:bg-gray-800/50",
           isFocused && "bg-red-200 dark:bg-red-800/50"
         )}
@@ -482,7 +482,7 @@ export const TodoItem: FC<{
           <span
             className={twMerge(
               "cursor-pointer select-none whitespace-nowrap overflow-hidden text-ellipsis",
-              status === "done" && "line-through text-gray-500"
+              status === "done" && "line-through text-gray-700 dark:text-gray-400 opacity-60 dark:opacity-70"
             )}
             onClick={handleToggleCompletedClick}
           >
