@@ -143,19 +143,6 @@ const todosWithCategories = evolu.createQuery(
 
 type TodosWithCategoriesRow = typeof todosWithCategories.Row;
 
-// const todoCategories = evolu.createQuery((db) =>
-//   db
-//     .selectFrom("todoCategory")
-//     .select(["id", "name"])
-//     .where("isDeleted", "is not", 1)
-//     // Filter null value and ensure non-null type.
-//     .where("name", "is not", null)
-//     .$narrowType<{ name: kysely.NotNull }>()
-//     .orderBy("createdAt"),
-// );
-
-// type TodoCategoriesRow = typeof todoCategories.Row;
-
 evolu.subscribeError(() => {
   const error = evolu.getError();
   if (!error) return;
@@ -219,15 +206,14 @@ const Button: FC<{
 
 const Todos: FC = () => {
   const rows = useQuery(todosWithCategories);
-
   const { insert } = useEvolu();
+  const [newTodoTitle, setNewTodoTitle] = useState("");
 
-  const handleAddTodoClick = () => {
-    const title = window.prompt("What needs to be done?");
-    if (title == null) return; // escape or cancel
+  const handleAddTodo = (title: string) => {
+    if (title.trim() === "") return;
 
     const result = insert("todo", {
-      title,
+      title: title.trim(),
       // This object is automatically converted to a JSON string.
       personJson: { name: "Joe", age: 32 },
       status: "todo",
@@ -235,6 +221,20 @@ const Todos: FC = () => {
 
     if (!result.ok) {
       alert(formatTypeError(result.error));
+    } else {
+      setNewTodoTitle("");
+    }
+  };
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    handleAddTodo(newTodoTitle);
+  };
+
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === "Enter") {
+      e.preventDefault();
+      handleAddTodo(newTodoTitle);
     }
   };
 
@@ -243,7 +243,21 @@ const Todos: FC = () => {
         {rows.map((row) => (
           <TodoItem key={row.id} row={row} />
         ))}
-      <Button title="Add Todo" onClick={handleAddTodoClick} />
+      <form onSubmit={handleSubmit} className="mt-4 flex gap-2">
+        <input
+          type="text"
+          value={newTodoTitle}
+          onChange={(e) => setNewTodoTitle(e.target.value)}
+          onKeyDown={handleKeyDown}
+          placeholder="What needs to be done?"
+          className="flex-1 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:border-gray-600 dark:bg-gray-800 dark:text-white dark:focus:ring-blue-400"
+        />
+        <Button
+          title="Add Todo"
+          onClick={() => handleAddTodo(newTodoTitle)}
+          className="whitespace-nowrap"
+        />
+      </form>
     </div>
   );
 };
