@@ -1,4 +1,4 @@
-import { FC, useState, useRef } from "react";
+import { FC, useState, useRef, useEffect, useCallback } from "react";
 import { useQuery } from "@evolu/react";
 import { twMerge } from "tailwind-merge";
 import { ContextMenu, ContextMenuItem } from "./ContextMenu";
@@ -7,6 +7,9 @@ import { formatTypeError } from "../lib/utils";
 
 export const Todos: FC = () => {
   const rows = useQuery(todosWithCategories);
+  const [focusedDateIndex, setFocusedDateIndex] = useState(0);
+  const [focusedTodoIndex, setFocusedTodoIndex] = useState(0);
+  const { update } = useEvolu();
 
   // Group todos by date
   const groupedTodos = rows.reduce((groups, row) => {
@@ -17,6 +20,92 @@ export const Todos: FC = () => {
     groups[date].push(row);
     return groups;
   }, {} as Record<string, TodosWithCategoriesRow[]>);
+
+  const dateKeys = Object.keys(groupedTodos);
+
+  // Function to toggle the currently focused todo item
+  const toggleFocusedTodo = useCallback(() => {
+    const currentDateKey = dateKeys[focusedDateIndex];
+    const currentTodos = currentDateKey ? groupedTodos[currentDateKey] : [];
+    const focusedTodo = currentTodos[focusedTodoIndex];
+
+    if (focusedTodo) {
+      update("todo", {
+        id: focusedTodo.id,
+        status:
+          focusedTodo.status === "todo"
+            ? "in progress"
+            : focusedTodo.status === "in progress"
+              ? "done"
+              : "todo",
+      });
+    }
+  }, [dateKeys, focusedDateIndex, focusedTodoIndex, groupedTodos, update]);
+
+  // Navigation functions
+  const navigateToNextDate = useCallback(() => {
+    setFocusedDateIndex(prev => (prev + 1) % dateKeys.length);
+    setFocusedTodoIndex(0);
+  }, [dateKeys.length]);
+
+  const navigateToPrevDate = useCallback(() => {
+    setFocusedDateIndex(prev => (prev - 1 + dateKeys.length) % dateKeys.length);
+    setFocusedTodoIndex(0);
+  }, [dateKeys.length]);
+
+  const navigateToNextTodo = useCallback(() => {
+    const currentDateTodos = groupedTodos[dateKeys[focusedDateIndex]];
+    if (currentDateTodos && currentDateTodos.length > 0) {
+      setFocusedTodoIndex(prev => (prev + 1) % currentDateTodos.length);
+    }
+  }, [groupedTodos, dateKeys, focusedDateIndex]);
+
+  const navigateToPrevTodo = useCallback(() => {
+    const currentDateTodos = groupedTodos[dateKeys[focusedDateIndex]];
+    if (currentDateTodos && currentDateTodos.length > 0) {
+      setFocusedTodoIndex(prev => (prev - 1 + currentDateTodos.length) % currentDateTodos.length);
+    }
+  }, [groupedTodos, dateKeys, focusedDateIndex]);
+
+  // Keyboard navigation
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      switch (e.key) {
+        case 'Tab':
+          e.preventDefault();
+          if (e.shiftKey) {
+            navigateToPrevTodo();
+          } else {
+            navigateToNextTodo();
+          }
+          break;
+        case ' ':
+        case 'Space':
+          e.preventDefault();
+          toggleFocusedTodo();
+          break;
+        case 'ArrowUp':
+          e.preventDefault();
+          navigateToPrevDate();
+          break;
+        case 'ArrowDown':
+          e.preventDefault();
+          navigateToNextDate();
+          break;
+        case 'ArrowLeft':
+          e.preventDefault();
+          navigateToPrevTodo();
+          break;
+        case 'ArrowRight':
+          e.preventDefault();
+          navigateToNextTodo();
+          break;
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [navigateToNextDate, navigateToNextTodo, navigateToPrevDate, navigateToPrevTodo, toggleFocusedTodo]);
 
   return (
     <div className="pb-20">
@@ -31,9 +120,18 @@ export const Todos: FC = () => {
             })}
           </h3>
           <div className="flex flex-wrap gap-2">
-            {todosForDate.map((row) => (
-              <TodoItem key={row.id} row={row} />
-            ))}
+            {todosForDate.map((row, index) => {
+              // Calculate global index for focus management
+              const dateIndex = dateKeys.indexOf(date);
+              const isFocused = dateIndex === focusedDateIndex && index === focusedTodoIndex;
+              return (
+                <TodoItem
+                  key={row.id}
+                  row={row}
+                  isFocused={isFocused}
+                />
+              );
+            })}
           </div>
         </div>
       ))}
@@ -43,7 +141,8 @@ export const Todos: FC = () => {
 
 export const TodoItem: FC<{
   row: TodosWithCategoriesRow;
-}> = ({ row: { id, title, status } }) => {
+  isFocused?: boolean;
+}> = ({ row: { id, title, status }, isFocused = false }) => {
   const { update } = useEvolu();
   const itemRef = useRef<HTMLDivElement>(null);
 
@@ -67,6 +166,13 @@ export const TodoItem: FC<{
             ? "done"
             : "todo",
     });
+  };
+
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === ' ' || e.key === 'Space') {
+      e.preventDefault();
+      handleToggleCompletedClick();
+    }
   };
 
   const handleRenameClick = () => {
@@ -150,16 +256,19 @@ export const TodoItem: FC<{
     <>
       <div
         ref={itemRef}
+        tabIndex={0}
         className={twMerge(
-          "inline-flex gap-1 cursor-pointer transition-colors rounded px-2 py-1 border",
+          "inline-flex gap-1 cursor-pointer transition-colors rounded px-2 py-1 border focus:outline-none",
           status === "in progress"
             ? "border-white hover:bg-gray-50 dark:hover:bg-gray-800/50"
-            : "border-transparent hover:bg-gray-50 dark:hover:bg-gray-800/50"
+            : "border-transparent hover:bg-gray-50 dark:hover:bg-gray-800/50",
+          isFocused && "bg-red-200 dark:bg-red-800/50"
         )}
         onContextMenu={handleRightClick}
         onTouchStart={handleTouchStart}
         onTouchEnd={handleTouchEnd}
         onTouchMove={handleTouchEnd} // Cancel long press if user moves finger
+        onKeyDown={handleKeyDown}
       >
         <label className="flex items-center">
           <span
