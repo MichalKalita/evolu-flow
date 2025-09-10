@@ -18,8 +18,8 @@ export function TodoForm() {
 
     const result = insert("todo", {
       title: title.trim(),
-      personJson: { name: "Joe", age: 32 },
       status: "todo",
+      previousId: null, // New items from form go to the end (no previous item)
     });
 
     if (!result.ok) {

@@ -17,6 +17,7 @@ export const evolu = createEvolu(evoluReactWebDeps)(Schema, {
       evolu.insert("todo", {
         title: "Try React Suspense",
         status: "todo",
+        previousId: null, // First item has no previous item
       });
     }
   },
@@ -25,6 +26,7 @@ export const evolu = createEvolu(evoluReactWebDeps)(Schema, {
   // https://www.evolu.dev/docs/indexes
   indexes: (create) => [
     create("todoCreatedAt").on("todo").column("createdAt"),
+    create("todoPreviousId").on("todo").column("previousId"), // For efficient linked list traversal
   ],
 
   // enableLogging: true,
@@ -36,12 +38,11 @@ export const todosWithCategories = evolu.createQuery(
   (db) =>
     db
       .selectFrom("todo")
-      .select(["id", "title", "status", "personJson", "createdAt"])
+      .select(["id", "title", "status", "createdAt", "previousId"])
       .where("isDeleted", "is not", 1)
       // Filter null value and ensure non-null type.
       .where("title", "is not", null)
-      .$narrowType<{ title: kysely.NotNull }>()
-      .orderBy("createdAt"),
+      .$narrowType<{ title: kysely.NotNull }>(),
   {
     // logQueryExecutionTime: true,
     // logExplainQueryPlan: true,

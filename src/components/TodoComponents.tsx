@@ -1,32 +1,182 @@
-import { FC, useState, useRef, useEffect, useCallback } from "react";
+import { FC, useState, useRef, useEffect, useCallback, useMemo } from "react";
 import { useQuery } from "@evolu/react";
 import { twMerge } from "tailwind-merge";
 import { ContextMenu, ContextMenuItem } from "./ContextMenu";
 import { todosWithCategories, TodosWithCategoriesRow, useEvolu } from "../lib/evolu-config";
 import { formatTypeError } from "../lib/utils";
 
+// Modal Component
+const AddTodoModal: FC<{
+  isOpen: boolean;
+  onClose: () => void;
+  onSubmit: (title: string) => void;
+  afterItemTitle: string;
+}> = ({ isOpen, onClose, onSubmit, afterItemTitle }) => {
+  const [title, setTitle] = useState("");
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    if (isOpen && inputRef.current) {
+      inputRef.current.focus();
+    }
+  }, [isOpen]);
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (title.trim()) {
+      onSubmit(title.trim());
+      setTitle("");
+      onClose();
+    }
+  };
+
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === "Escape") {
+      onClose();
+    } else if (e.key === "Enter") {
+      handleSubmit(e);
+    }
+  };
+
+  if (!isOpen) return null;
+
+  return (
+    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+      <div className="bg-white dark:bg-gray-800 rounded-lg p-6 w-full max-w-md mx-4">
+        <h3 className="text-lg font-semibold mb-4 text-gray-900 dark:text-gray-100">
+          Add todo after "{afterItemTitle}"
+        </h3>
+
+        <form onSubmit={handleSubmit}>
+          <input
+            ref={inputRef}
+            type="text"
+            value={title}
+            onChange={(e) => setTitle(e.target.value)}
+            onKeyDown={handleKeyDown}
+            placeholder="Enter todo title..."
+            className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
+          />
+
+          <div className="flex gap-2 mt-4">
+            <button
+              type="submit"
+              className="flex-1 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-md transition-colors"
+            >
+              Add Todo
+            </button>
+            <button
+              type="button"
+              onClick={onClose}
+              className="px-4 py-2 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 rounded-md hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
+            >
+              Cancel
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  );
+};
+
 export const Todos: FC = () => {
   const rows = useQuery(todosWithCategories);
   const [focusedDateIndex, setFocusedDateIndex] = useState(0);
   const [focusedTodoIndex, setFocusedTodoIndex] = useState(0);
-  const { update } = useEvolu();
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const { update, insert } = useEvolu();
 
-  // Group todos by date
-  const groupedTodos = rows.reduce((groups, row) => {
-    const date = new Date(row.createdAt).toDateString();
-    if (!groups[date]) {
-      groups[date] = [];
+  // Function to sort todos by linked list structure
+  const sortTodosByLinkedList = useCallback((todos: TodosWithCategoriesRow[]) => {
+    if (!todos.length) return [];
+
+    const todoMap = new Map(todos.map(todo => [todo.id as string, todo]));
+    const sorted: TodosWithCategoriesRow[] = [];
+    const visited = new Set<string>();
+
+    // Find items with no previousId (starting points)
+    const startingPoints = todos.filter(todo => todo.previousId == null);
+
+    // If no starting points, use the first item as a fallback
+    if (startingPoints.length === 0 && todos.length > 0) {
+      startingPoints.push(todos[0]);
     }
-    groups[date].push(row);
+
+    // Traverse from each starting point
+    const traverseFrom = (currentId: string) => {
+      if (visited.has(currentId)) return;
+      visited.add(currentId);
+
+      const currentTodo = todoMap.get(currentId as string & { __brand: "Id" } & { __brand: "Todo" });
+      if (!currentTodo) return;
+
+      sorted.push(currentTodo);
+
+      // Find all items that have this item as their previousId
+      const nextItems = todos.filter(todo =>
+        todo.previousId == currentId && !visited.has(todo.id)
+      );
+
+      // Sort next items by createdAt to maintain some predictability
+      nextItems.sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime());
+
+      // Traverse each next item
+      nextItems.forEach(nextItem => traverseFrom(nextItem.id));
+    };
+
+    // Start traversal from each starting point
+    startingPoints.forEach(startItem => {
+      if (!visited.has(startItem.id)) {
+        traverseFrom(startItem.id);
+      }
+    });
+
+    // Add any remaining items that weren't reached (orphans)
+    todos.forEach(todo => {
+      if (!visited.has(todo.id)) {
+        sorted.push(todo);
+      }
+    });
+
+    return sorted;
+  }, []);
+
+  // Group todos by date and sort each group
+  const groupedTodos = useMemo(() => {
+    const groups = rows.reduce((acc, row) => {
+      const date = new Date(row.createdAt).toDateString();
+      if (!acc[date]) {
+        acc[date] = [];
+      }
+      acc[date].push(row);
+      return acc;
+    }, {} as Record<string, TodosWithCategoriesRow[]>);
+
+    // Sort each date group by linked list structure
+    Object.keys(groups).forEach(date => {
+      groups[date] = sortTodosByLinkedList(groups[date]);
+    });
+
     return groups;
-  }, {} as Record<string, TodosWithCategoriesRow[]>);
+  }, [rows, sortTodosByLinkedList]);
 
   const dateKeys = Object.keys(groupedTodos);
 
+  // Get the currently focused todo item for the modal
+  const currentDateKey = useMemo(() => dateKeys[focusedDateIndex], [dateKeys, focusedDateIndex]);
+  const currentTodos = useMemo(() => currentDateKey ? groupedTodos[currentDateKey] : [], [currentDateKey, groupedTodos]);
+  const focusedTodo = useMemo(() => currentTodos[focusedTodoIndex], [currentTodos, focusedTodoIndex]);
+
+  // Modal handlers
+  const handleModalClose = () => setIsModalOpen(false);
+
+  const handleModalSubmit = (title: string) => {
+    addTodoAfterFocused(title);
+    setIsModalOpen(false);
+  };
+
   // Function to toggle the currently focused todo item
   const toggleFocusedTodo = useCallback(() => {
-    const currentDateKey = dateKeys[focusedDateIndex];
-    const currentTodos = currentDateKey ? groupedTodos[currentDateKey] : [];
     const focusedTodo = currentTodos[focusedTodoIndex];
 
     if (focusedTodo) {
@@ -40,7 +190,46 @@ export const Todos: FC = () => {
               : "todo",
       });
     }
-  }, [dateKeys, focusedDateIndex, focusedTodoIndex, groupedTodos, update]);
+  }, [currentTodos, focusedTodoIndex, update]);
+
+  // Function to add a new todo item after the currently focused item
+  const addTodoAfterFocused = useCallback((title: string) => {
+    if (focusedTodo && title.trim()) {
+      // Create new todo with proper linked list structure
+      const newTodoData = {
+        title: title.trim(),
+        status: "todo" as const,
+        previousId: focusedTodo.id,
+      };
+
+      // Insert the new todo
+      const result = insert("todo", newTodoData);
+
+      if (result.ok) {
+        // Calculate the expected position for the new item
+        // The new item should appear right after the focused item
+        const expectedNewIndex = focusedTodoIndex + 1;
+
+        // Set focus to the expected position immediately
+        setFocusedTodoIndex(expectedNewIndex);
+
+        // Find all items that come after the focused item and update their previousId
+        // This is needed because we're only using previousId (singly linked list)
+        currentTodos.forEach((todo, index) => {
+          if (index > focusedTodoIndex && todo.previousId == focusedTodo.id) {
+            update("todo", {
+              id: todo.id,
+              previousId: result.value.id,
+            });
+          }
+        });
+
+        // Return the new item's ID
+        return result.value.id;
+      }
+    }
+    return null;
+  }, [focusedTodo, currentTodos, focusedTodoIndex, insert, update]);
 
   // Navigation functions
   const navigateToNextDate = useCallback(() => {
@@ -90,6 +279,11 @@ export const Todos: FC = () => {
           e.preventDefault();
           toggleFocusedTodo();
           break;
+        case 'a':
+        case 'A':
+          e.preventDefault();
+          setIsModalOpen(true);
+          break;
         case 'ArrowUp':
           e.preventDefault();
           navigateToPrevDate();
@@ -111,7 +305,7 @@ export const Todos: FC = () => {
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [navigateToNextDate, navigateToNextTodo, navigateToPrevDate, navigateToPrevTodo, toggleFocusedTodo]);
+  }, [navigateToNextDate, navigateToNextTodo, navigateToPrevDate, navigateToPrevTodo, toggleFocusedTodo, addTodoAfterFocused]);
 
   return (
     <div className="pb-20">
@@ -141,6 +335,14 @@ export const Todos: FC = () => {
           </div>
         </div>
       ))}
+
+      {/* Add Todo Modal */}
+      <AddTodoModal
+        isOpen={isModalOpen}
+        onClose={handleModalClose}
+        onSubmit={handleModalSubmit}
+        afterItemTitle={focusedTodo?.title || "selected item"}
+      />
     </div>
   );
 };
