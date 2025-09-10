@@ -8,10 +8,34 @@ import { formatTypeError } from "../lib/utils";
 export const Todos: FC = () => {
   const rows = useQuery(todosWithCategories);
 
+  // Group todos by date
+  const groupedTodos = rows.reduce((groups, row) => {
+    const date = new Date(row.createdAt).toDateString();
+    if (!groups[date]) {
+      groups[date] = [];
+    }
+    groups[date].push(row);
+    return groups;
+  }, {} as Record<string, TodosWithCategoriesRow[]>);
+
   return (
     <div className="pb-20">
-      {rows.map((row) => (
-        <TodoItem key={row.id} row={row} />
+      {Object.entries(groupedTodos).map(([date, todosForDate]) => (
+        <div key={date} className="mb-6">
+          <h3 className="text-base font-light text-gray-800 dark:text-gray-200 mb-3 px-3 py-2 border-b-2 border-gray-300 dark:border-gray-600 italic font-serif tracking-wide">
+            {new Date(date).toLocaleDateString('en-US', {
+              weekday: 'long',
+              year: 'numeric',
+              month: 'long',
+              day: 'numeric'
+            })}
+          </h3>
+          <div className="flex flex-wrap gap-2">
+            {todosForDate.map((row) => (
+              <TodoItem key={row.id} row={row} />
+            ))}
+          </div>
+        </div>
       ))}
     </div>
   );
@@ -124,32 +148,31 @@ export const TodoItem: FC<{
 
   return (
     <>
-      <li className="list-none pl-0">
-        <div
-          ref={itemRef}
-          className="flex items-center gap-1 cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-800/50 rounded px-2 py-1 transition-colors"
-          onContextMenu={handleRightClick}
-          onTouchStart={handleTouchStart}
-          onTouchEnd={handleTouchEnd}
-          onTouchMove={handleTouchEnd} // Cancel long press if user moves finger
-        >
-          <label className="flex w-full items-center">
-            <span
-              className={twMerge(
-                "cursor-pointer select-none",
-                status === "done"
-                  ? "line-through text-gray-500"
-                  : status === "in progress"
-                  ? "underline font-semibold"
-                  : ""
-              )}
-              onClick={handleToggleCompletedClick}
-            >
-              {title}
-            </span>
-          </label>
-        </div>
-      </li>
+      <div
+        ref={itemRef}
+        className={twMerge(
+          "inline-flex gap-1 cursor-pointer transition-colors rounded px-2 py-1 border",
+          status === "in progress"
+            ? "border-white hover:bg-gray-50 dark:hover:bg-gray-800/50"
+            : "border-transparent hover:bg-gray-50 dark:hover:bg-gray-800/50"
+        )}
+        onContextMenu={handleRightClick}
+        onTouchStart={handleTouchStart}
+        onTouchEnd={handleTouchEnd}
+        onTouchMove={handleTouchEnd} // Cancel long press if user moves finger
+      >
+        <label className="flex items-center">
+          <span
+            className={twMerge(
+              "cursor-pointer select-none whitespace-nowrap overflow-hidden text-ellipsis",
+              status === "done" && "line-through text-gray-500"
+            )}
+            onClick={handleToggleCompletedClick}
+          >
+            {title}
+          </span>
+        </label>
+      </div>
 
       <ContextMenu
         items={contextMenuItems}

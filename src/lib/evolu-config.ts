@@ -36,7 +36,7 @@ export const todosWithCategories = evolu.createQuery(
   (db) =>
     db
       .selectFrom("todo")
-      .select(["id", "title", "status", "personJson"])
+      .select(["id", "title", "status", "personJson", "createdAt"])
       .where("isDeleted", "is not", 1)
       // Filter null value and ensure non-null type.
       .where("title", "is not", null)

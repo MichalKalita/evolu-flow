@@ -33,6 +33,7 @@ function App() {
 
   return (
     <div className="w-screen h-screen overflow-y-auto overflow-x-hidden dark:bg-neutral-900 dark:text-neutral-200 p-4 pb-24">
+      <div className="max-w-2xl mx-auto">
       <h1 className="text-2xl font-bold">Evolu Todo List</h1>
 
       <EvoluProvider value={evolu}>
@@ -52,6 +53,7 @@ function App() {
       </EvoluProvider>
 
       <PWABadge />
+      </div>
     </div>
   );
 }
