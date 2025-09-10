@@ -1,12 +1,26 @@
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, forwardRef, useImperativeHandle } from "react";
 import { useEvolu } from "../lib/evolu-config";
 import { Button } from "./ui";
 
-export function TodoForm() {
+export interface TodoFormRef {
+  focusInput: () => void;
+}
+
+export const TodoForm = forwardRef<TodoFormRef>((props, ref) => {
   const { insert } = useEvolu();
   const [newTodoTitle, setNewTodoTitle] = useState("");
   const inputRef = useRef<HTMLInputElement>(null);
   const keysPressed = useRef<Set<string>>(new Set());
+
+  // Expose focusInput method to parent components
+  useImperativeHandle(ref, () => ({
+    focusInput: () => {
+      if (inputRef.current) {
+        inputRef.current.focus();
+        inputRef.current.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      }
+    }
+  }));
 
   // Detect platform for shortcut display
   const isMac = navigator.platform.toUpperCase().indexOf('MAC') >= 0;
@@ -120,4 +134,4 @@ export function TodoForm() {
       </div>
     </form>
   );
-}
+});

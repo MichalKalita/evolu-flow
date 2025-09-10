@@ -1,4 +1,4 @@
-import { FC, useState, useRef, useEffect, useCallback, useMemo } from "react";
+import React, { FC, useState, useRef, useEffect, useCallback, useMemo } from "react";
 import { useQuery } from "@evolu/react";
 import { twMerge } from "tailwind-merge";
 import { ContextMenu, ContextMenuItem } from "./ContextMenu";
@@ -44,7 +44,7 @@ const AddTodoModal: FC<{
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
       <div className="bg-white dark:bg-gray-800 rounded-lg p-6 w-full max-w-md mx-4">
         <h3 className="text-lg font-semibold mb-4 text-gray-900 dark:text-gray-100">
-          Add todo after "{afterItemTitle}"
+          Insert todo after "{afterItemTitle}"
         </h3>
 
         <form onSubmit={handleSubmit}>
@@ -63,7 +63,7 @@ const AddTodoModal: FC<{
               type="submit"
               className="flex-1 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-md transition-colors"
             >
-              Add Todo
+              Insert Todo
             </button>
             <button
               type="button"
@@ -79,7 +79,11 @@ const AddTodoModal: FC<{
   );
 };
 
-export const Todos: FC = () => {
+interface TodosProps {
+  todoFormRef: React.RefObject<{ focusInput: () => void }>;
+}
+
+export const Todos: FC<TodosProps> = ({ todoFormRef }) => {
   const rows = useQuery(todosWithCategories);
   const [focusedDateIndex, setFocusedDateIndex] = useState(0);
   const [focusedTodoIndex, setFocusedTodoIndex] = useState(0);
@@ -282,7 +286,23 @@ export const Todos: FC = () => {
         case 'a':
         case 'A':
           e.preventDefault();
+          if (todoFormRef.current) {
+            todoFormRef.current.focusInput();
+          }
+          break;
+        case 'i':
+        case 'I':
+          e.preventDefault();
           setIsModalOpen(true);
+          break;
+        case 'r':
+        case 'R':
+          e.preventDefault();
+          if (focusedTodo) {
+            const newTitle = window.prompt("Reword todo", focusedTodo.title);
+            if (newTitle == null || newTitle.trim() === "") return;
+            update("todo", { id: focusedTodo.id, title: newTitle.trim() });
+          }
           break;
         case 'ArrowUp':
           e.preventDefault();
