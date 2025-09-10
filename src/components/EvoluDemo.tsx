@@ -7,7 +7,6 @@ import {
   FiniteNumber,
   getOrThrow,
   id,
-  idToBinaryId,
   json,
   kysely,
   maxLength,
@@ -30,6 +29,7 @@ import {
 } from "@evolu/react";
 import { evoluReactWebDeps } from "@evolu/react-web";
 import { FC, memo, Suspense, useEffect, useState } from "react";
+import { twMerge } from "tailwind-merge";
 
 // Define the Evolu schema that describes the database tables and column types.
 // First, define the typed IDs.
@@ -211,7 +211,7 @@ const Button: FC<{
   onClick: () => void;
 }> = ({ title, className, onClick }) => {
   return (
-    <button className={className} onClick={onClick}>
+    <button className={twMerge("px-4 py-2 rounded-md border border-blue-500 text-blue-500 cursor-pointer hover:bg-blue-50 dark:border-blue-400 dark:text-blue-400 dark:hover:bg-blue-900/20", className)} onClick={onClick}>
       {title}
     </button>
   );
@@ -240,12 +240,9 @@ const Todos: FC = () => {
 
   return (
     <div>
-      <h2>Todos</h2>
-      <ul style={{ margin: 0, padding: 0 }}>
         {rows.map((row) => (
           <TodoItem key={row.id} row={row} />
         ))}
-      </ul>
       <Button title="Add Todo" onClick={handleAddTodoClick} />
     </div>
   );
@@ -281,42 +278,12 @@ const TodoItem: FC<{
     update("todo", { id, isDeleted: true });
   };
 
-  const titleHistory = evolu.createQuery((db) =>
-    db
-      .selectFrom("evolu_history")
-      .select(["value", "timestamp"])
-      .where("table", "==", "todo")
-      .where("id", "==", idToBinaryId(id))
-      .where("column", "==", "title")
-      // `value` isn't typed; this is how we can narrow its type.
-      .$narrowType<{ value: (typeof Schema)["todo"]["title"]["Type"] }>()
-      .orderBy("timestamp", "desc"),
-  );
-
-  const handleHistoryClick = () => {
-    void evolu.loadQuery(titleHistory).then((rows) => {
-      const rowsWithTimestamp = rows.map((row) => ({
-        ...row,
-        timestamp: binaryTimestampToTimestamp(row.timestamp),
-      }));
-      alert(JSON.stringify(rowsWithTimestamp, null, 2));
-    });
-  };
-
   return (
     <li className="list-none pl-0">
       <div className="flex items-center gap-1">
         <label className="flex w-full items-center">
           <span
-            className="text-sm font-semibold"
-            style={{
-              textDecoration:
-                status === "done"
-                  ? "line-through"
-                  : status === "in progress"
-                    ? "underline"
-                    : "none",
-            }}
+            className={twMerge("cursor-pointer", status === "done" ? "line-through text-gray-500" : status === "in progress" ? "underline font-semibold" : "")}
             onClick={handleToggleCompletedClick}
           >
             {title}
@@ -329,7 +296,6 @@ const TodoItem: FC<{
             onClick={handleRenameClick}
           />
           <Button title="Delete" onClick={handleDeleteClick} />
-          <Button title="Show Title History" onClick={handleHistoryClick} />
         </div>
       </div>
     </li>
