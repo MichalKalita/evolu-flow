@@ -3,6 +3,7 @@ import { EvoluProvider } from "@evolu/react";
 import { evolu } from "./lib/evolu-config";
 import { NotificationBar } from "./components/ui";
 import { Todos } from "./components/TodoComponents";
+import { TodoForm } from "./components/TodoForm";
 import { SettingsIcon } from "./components/SettingsIcon";
 import { SettingsMenu } from "./components/SettingsMenu";
 import PWABadge from "./PWABadge.tsx";
@@ -31,7 +32,7 @@ function App() {
   };
 
   return (
-    <div className="w-screen h-screen overflow-y-auto overflow-x-hidden dark:bg-neutral-900 dark:text-neutral-200 p-4">
+    <div className="w-screen h-screen overflow-y-auto overflow-x-hidden dark:bg-neutral-900 dark:text-neutral-200 p-4 pb-24">
       <h1 className="text-2xl font-bold">Evolu Todo List</h1>
 
       <EvoluProvider value={evolu}>
@@ -46,6 +47,8 @@ function App() {
           position={settingsMenu.position}
           onClose={handleSettingsClose}
         />
+
+        <TodoForm />
       </EvoluProvider>
 
       <PWABadge />

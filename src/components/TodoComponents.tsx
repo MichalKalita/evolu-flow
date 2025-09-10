@@ -1,65 +1,18 @@
 import { FC, useState, useRef } from "react";
 import { useQuery } from "@evolu/react";
 import { twMerge } from "tailwind-merge";
-import { Button } from "./ui";
 import { ContextMenu, ContextMenuItem } from "./ContextMenu";
 import { todosWithCategories, TodosWithCategoriesRow, useEvolu } from "../lib/evolu-config";
 import { formatTypeError } from "../lib/utils";
 
 export const Todos: FC = () => {
   const rows = useQuery(todosWithCategories);
-  const { insert } = useEvolu();
-  const [newTodoTitle, setNewTodoTitle] = useState("");
-
-  const handleAddTodo = (title: string) => {
-    if (title.trim() === "") return;
-
-    const result = insert("todo", {
-      title: title.trim(),
-      // This object is automatically converted to a JSON string.
-      personJson: { name: "Joe", age: 32 },
-      status: "todo",
-    });
-
-    if (!result.ok) {
-      alert(formatTypeError(result.error));
-    } else {
-      setNewTodoTitle("");
-    }
-  };
-
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    handleAddTodo(newTodoTitle);
-  };
-
-  const handleKeyDown = (e: React.KeyboardEvent) => {
-    if (e.key === "Enter") {
-      e.preventDefault();
-      handleAddTodo(newTodoTitle);
-    }
-  };
 
   return (
-    <div>
+    <div className="pb-20">
       {rows.map((row) => (
         <TodoItem key={row.id} row={row} />
       ))}
-      <form onSubmit={handleSubmit} className="mt-4 flex gap-2">
-        <input
-          type="text"
-          value={newTodoTitle}
-          onChange={(e) => setNewTodoTitle(e.target.value)}
-          onKeyDown={handleKeyDown}
-          placeholder="What needs to be done?"
-          className="flex-1 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:border-gray-600 dark:bg-gray-800 dark:text-white dark:focus:ring-blue-400"
-        />
-        <Button
-          title="Add Todo"
-          onClick={() => handleAddTodo(newTodoTitle)}
-          className="whitespace-nowrap"
-        />
-      </form>
     </div>
   );
 };
