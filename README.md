@@ -1,4 +1,4 @@
-# Evolu Todo App
+# Evolu Flow
 
 A modern, offline-first todo application built with React, TypeScript, and Evolu - a reactive database for the web.
 

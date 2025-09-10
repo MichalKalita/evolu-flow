@@ -22,9 +22,9 @@ export default defineConfig({
       },
 
       manifest: {
-        name: "vite-react-pwa",
-        short_name: "vite-react-pwa",
-        description: "vite-react-pwa",
+        name: "Evolu Flow",
+        short_name: "Evolu Flow",
+        description: "A modern, offline-first todo application built with React, TypeScript, and Evolu",
         theme_color: "#ffffff",
       },
 
