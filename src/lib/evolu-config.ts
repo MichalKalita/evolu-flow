@@ -5,12 +5,10 @@ import { kysely } from "@evolu/common";
 import { Schema } from "./schema";
 
 export const evolu = createEvolu(evoluReactWebDeps)(Schema, {
-  name: getOrThrow(SimpleName.from("evolu-react-vite-pwa-example")),
+  name: getOrThrow(SimpleName.from("evolu-flow")),
   reloadUrl: "/",
+  syncUrl: "wss://evolu-kalita.up.railway.app",
 
-  ...(import.meta.env.DEV && {
-    syncUrl: "wss://evolu-kalita.up.railway.app",
-  }),
 
   onInit: ({ isFirst }) => {
     if (isFirst) {
